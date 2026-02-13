@@ -14,6 +14,13 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CloseIcon from '@mui/icons-material/Close';
+import AddIcon from '@mui/icons-material/Add';
+import Modal from '@mui/material/Modal';
+import Box from '@mui/material/Box';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import Cropper from 'react-easy-crop';
 
 const AddProject = () => {
     // Form data state
@@ -55,6 +62,14 @@ const AddProject = () => {
     const [imagePreview, setImagePreview] = useState('');
     const [noNRC, setNoNRC] = useState(false);
 
+    // Image cropping states
+    const [showCropModal, setShowCropModal] = useState(false);
+    const [imageToCrop, setImageToCrop] = useState(null);
+    const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+    const [originalImageFile, setOriginalImageFile] = useState(null);
+
     // Logo states
     const [staticLogoOptions, setStaticLogoOptions] = useState([]);
     const [customLogoFile, setCustomLogoFile] = useState(null);
@@ -85,18 +100,38 @@ const AddProject = () => {
 
     const riskStatusOptions = [
         { label: 'None', value: '1' },
-        { label: <DiamondIcon sx={{ color: 'rgb(255,215,5)' }} />, value: '2' },
-        { label: <DiamondIcon sx={{ color: 'green' }} />, value: '3' },
-        { label: <DiamondIcon sx={{ color: 'red' }} />, value: '4' },
-        {
-            label: (
-                <span style={{ display: 'flex', gap: '4px' }}>
-                    <DiamondIcon sx={{ color: 'red' }} />
-                    <DiamondIcon sx={{ color: 'red' }} />
-                </span>
-            ), value: '5'
-        },
+        { label: 'Yellow', value: '2' },
+        { label: 'Green', value: '3' },
+        { label: 'Red', value: '4' },
+        { label: 'Double Red', value: '5' },
     ];
+
+    // Helper function to render status icon (matching ProjectCard style)
+    const renderStatusIcon = (statusValue) => {
+        const val = Number(statusValue);
+
+        if (val === 1) {
+            return <em className="text-transparent flex-shrink-0"></em>;
+        }
+        if (val === 2) {
+            return <div className="w-[15px] h-[15px] bg-[rgb(255,215,5)] rotate-45 flex-shrink-0"></div>;
+        }
+        if (val === 3) {
+            return <div className="w-[12px] h-[12px] bg-green-500 rotate-45 flex-shrink-0"></div>;
+        }
+        if (val === 4) {
+            return <div className="w-[18px] h-[18px] bg-red-500 rotate-45 flex-shrink-0"></div>;
+        }
+        if (val === 5) {
+            return (
+                <div className="flex items-center gap-1 flex-shrink-0">
+                    <div className="w-[18px] h-[18px] bg-red-500 rotate-45 mr-1"></div>
+                    <div className="w-[18px] h-[18px] bg-red-500 rotate-45"></div>
+                </div>
+            );
+        }
+        return <em className="text-gray-400 text-xs flex-shrink-0">None</em>;
+    };
 
     // Load logos on mount
     useEffect(() => {
@@ -115,8 +150,11 @@ const AddProject = () => {
             if (customManufacturerLogoPreview) {
                 URL.revokeObjectURL(customManufacturerLogoPreview);
             }
+            if (imageToCrop && imageToCrop.startsWith('blob:')) {
+                URL.revokeObjectURL(imageToCrop);
+            }
         };
-    }, [imagePreview, customLogoPreview, customManufacturerLogoPreview]);
+    }, [imagePreview, customLogoPreview, customManufacturerLogoPreview, imageToCrop]);
 
     // Load logos from API
     const loadLogos = useCallback(async () => {
@@ -171,11 +209,11 @@ const AddProject = () => {
                 const file = files[0];
                 if (file) {
                     const imageUrl = URL.createObjectURL(file);
-                    setImagePreview(imageUrl);
-                    setFormData((prev) => ({
-                        ...prev,
-                        image: file,
-                    }));
+                    setImageToCrop(imageUrl);
+                    setOriginalImageFile(file);
+                    setShowCropModal(true);
+                    setCrop({ x: 0, y: 0 });
+                    setZoom(1);
                 }
             }
         } else {
@@ -308,6 +346,106 @@ const AddProject = () => {
         } finally {
             setIsLogoSaving(false);
         }
+    };
+
+    // Image cropping functions
+    const createImage = (url) => {
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.addEventListener('load', () => resolve(image));
+            image.addEventListener('error', (error) => reject(error));
+            image.src = url;
+        });
+    };
+
+    const getCroppedImg = async (imageSrc, pixelCrop) => {
+        const image = await createImage(imageSrc);
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) {
+            throw new Error('No 2d context');
+        }
+
+        canvas.width = pixelCrop.width;
+        canvas.height = pixelCrop.height;
+
+        ctx.drawImage(
+            image,
+            pixelCrop.x,
+            pixelCrop.y,
+            pixelCrop.width,
+            pixelCrop.height,
+            0,
+            0,
+            pixelCrop.width,
+            pixelCrop.height
+        );
+
+        return new Promise((resolve, reject) => {
+            canvas.toBlob(
+                (blob) => {
+                    if (!blob) {
+                        reject(new Error('Canvas is empty'));
+                        return;
+                    }
+                    const originalFileName = originalImageFile?.name || 'image.jpg';
+                    const fileExtension = originalFileName.split('.').pop() || 'jpg';
+                    const fileName = `cropped-image.${fileExtension}`;
+                    const file = new File([blob], fileName, {
+                        type: blob.type || 'image/jpeg',
+                    });
+                    resolve(file);
+                },
+                'image/jpeg',
+                0.95
+            );
+        });
+    };
+
+    const onCropComplete = async () => {
+        if (!imageToCrop || !croppedAreaPixels) {
+            return;
+        }
+
+        try {
+            const croppedFile = await getCroppedImg(imageToCrop, croppedAreaPixels);
+            const croppedImageUrl = URL.createObjectURL(croppedFile);
+
+            setFormData((prev) => ({
+                ...prev,
+                image: croppedFile,
+            }));
+
+            setImagePreview(croppedImageUrl);
+
+            setShowCropModal(false);
+            if (imageToCrop) {
+                URL.revokeObjectURL(imageToCrop);
+            }
+            setImageToCrop(null);
+            setOriginalImageFile(null);
+            setCrop({ x: 0, y: 0 });
+            setZoom(1);
+            setCroppedAreaPixels(null);
+
+            toast.success('Image cropped successfully!');
+        } catch (error) {
+            console.error('Error cropping image:', error);
+            toast.error('Failed to crop image. Please try again.');
+        }
+    };
+
+    const handleCropCancel = () => {
+        setShowCropModal(false);
+        if (imageToCrop) {
+            URL.revokeObjectURL(imageToCrop);
+        }
+        setImageToCrop(null);
+        setOriginalImageFile(null);
+        setCrop({ x: 0, y: 0 });
+        setZoom(1);
+        setCroppedAreaPixels(null);
     };
 
     // Helper functions for safe number conversion
@@ -484,18 +622,23 @@ const AddProject = () => {
     const isMainStaticLogoSelected = formData.logo && staticLogoOptions.some((logo) => logo.url === formData.logo);
     const isManufacturerStaticLogoSelected = formData.manufactureLogo && staticLogoOptions.some((logo) => logo.url === formData.manufactureLogo);
 
+    // Prevent number input from changing on mouse wheel
+    const handleNumberWheel = (e) => {
+        e.target.blur();
+    };
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50 p-4 md:p-6 lg:p-8">
-            <div className="max-w-7xl mx-auto">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50 p-4 md:p-6">
+            <div className="max-w-[1000px] mx-auto">
                 {/* Page Header */}
-                <div className="mb-8">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-blue-600 rounded-lg">
-                            <DescriptionIcon sx={{ fontSize: 28, color: 'white' }} />
+                <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="p-1.5 bg-blue-600 rounded-lg">
+                            <DescriptionIcon sx={{ fontSize: 24, color: 'white' }} />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900">Add New Project</h1>
-                            <p className="text-sm text-gray-600 mt-1">Fill in the project details below to create a new project</p>
+                            <h1 className="text-2xl font-bold text-gray-900">Add New Project</h1>
+                            <p className="text-xs text-gray-600">Fill in the project details below to create a new project</p>
                         </div>
                     </div>
                 </div>
@@ -519,11 +662,11 @@ const AddProject = () => {
                 )}
 
                 <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                    <div className="p-6 md:p-8 space-y-6">
+                    <div className="p-4 md:p-6 space-y-4">
                         {/* Project Image */}
-                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-6 border border-gray-200">
-                            <label className="block text-sm font-semibold text-gray-700 mb-4">Project Image</label>
-                            <div className="space-y-4">
+                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-4 border border-gray-200">
+                            <label className="block text-sm font-semibold text-gray-700 mb-3">Project Image</label>
+                            <div className="space-y-3">
                                 <input
                                     type="file"
                                     id="imageUpload"
@@ -534,15 +677,15 @@ const AddProject = () => {
                                 />
                                 <label
                                     htmlFor="imageUpload"
-                                    className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-200 group"
+                                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-200 group"
                                 >
-                                    <div className="flex flex-col items-center gap-3">
-                                        <div className="p-3 bg-blue-100 rounded-full group-hover:bg-blue-200 transition-colors">
-                                            <CloudUploadIcon sx={{ fontSize: 32, color: '#3b82f6' }} />
+                                    <div className="flex flex-col items-center gap-2">
+                                        <div className="p-2 bg-blue-100 rounded-full group-hover:bg-blue-200 transition-colors">
+                                            <CloudUploadIcon sx={{ fontSize: 28, color: '#3b82f6' }} />
                                         </div>
                                         <div className="text-center">
                                             <p className="text-sm font-medium text-gray-700 group-hover:text-blue-600">Click to upload image</p>
-                                            <p className="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 10MB</p>
+                                            <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
                                         </div>
                                     </div>
                                 </label>
@@ -574,7 +717,7 @@ const AddProject = () => {
                         </div>
 
                         {/* Project Title */}
-                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-6 border border-gray-200">
+                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-4 border border-gray-200">
                             <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-2">
                                 Project Title <span className="text-red-500">*</span>
                             </label>
@@ -586,21 +729,21 @@ const AddProject = () => {
                                 onChange={handleChange}
                                 required
                                 maxLength={255}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-sm"
                                 placeholder="Enter Project Title"
                             />
                         </div>
 
                         {/* Logo Field */}
-                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-6 border border-gray-200">
-                            <label className="block text-sm font-semibold text-gray-700 mb-4">Logo</label>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-4 border border-gray-200">
+                            <label className="block text-sm font-semibold text-gray-700 mb-3">Logo</label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Customer Logo */}
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-3">Customer Logo</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Customer Logo</label>
                                     <div
                                         onClick={() => handleOpenLogoModal('main')}
-                                        className={`border-2 rounded-xl p-6 text-center cursor-pointer transition-all duration-200 min-h-[160px] flex flex-col items-center justify-center ${formData.logo
+                                        className={`border-2 rounded-lg p-4 text-center cursor-pointer transition-all duration-200 min-h-[140px] flex flex-col items-center justify-center ${formData.logo
                                             ? 'border-blue-500 bg-blue-50/50 shadow-md'
                                             : 'border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50/30'
                                             }`}
@@ -642,10 +785,10 @@ const AddProject = () => {
 
                                 {/* End Customer Logo */}
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-3">End Customer Logo</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">End Customer Logo</label>
                                     <div
                                         onClick={() => handleOpenLogoModal('manufacturer')}
-                                        className={`border-2 rounded-xl p-6 text-center cursor-pointer transition-all duration-200 min-h-[160px] flex flex-col items-center justify-center ${formData.manufactureLogo
+                                        className={`border-2 rounded-lg p-4 text-center cursor-pointer transition-all duration-200 min-h-[140px] flex flex-col items-center justify-center ${formData.manufactureLogo
                                             ? 'border-blue-500 bg-blue-50/50 shadow-md'
                                             : 'border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50/30'
                                             }`}
@@ -688,14 +831,14 @@ const AddProject = () => {
                         </div>
 
                         {/* Manager Field */}
-                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-6 border border-gray-200">
+                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-4 border border-gray-200">
                             <label htmlFor="manager" className="block text-sm font-semibold text-gray-700 mb-2">Manager</label>
                             <select
                                 id="manager"
                                 name="manager"
                                 value={formData.manager}
                                 onChange={handleChange}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-sm"
                             >
                                 <option value="">Select Manager</option>
                                 {managerOptions.map((option) => (
@@ -707,313 +850,423 @@ const AddProject = () => {
                         </div>
 
                         {/* Section 1: Total Contract Deliverables */}
-                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-6 border border-gray-200">
-                            <div className="flex items-center gap-2 mb-6">
-                                <AssessmentIcon sx={{ fontSize: 20, color: '#3b82f6' }} />
-                                <h2 className="text-lg font-semibold text-gray-800">Total Contract Deliverables</h2>
+                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-4 border border-gray-200">
+                            <div className="flex items-center gap-2 mb-3">
+                                <AssessmentIcon sx={{ fontSize: 18, color: '#3b82f6' }} />
+                                <h2 className="text-base font-semibold text-gray-800">Total Contract Deliverables</h2>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                                 <div>
-                                    <label htmlFor="fixture" className="block text-sm font-semibold text-gray-700 mb-2">Fixture</label>
+                                    <label htmlFor="fixture" className="block text-xs font-semibold text-gray-700 mb-1.5">Fixture</label>
                                     <input
                                         type="text"
                                         id="fixture"
                                         name="fixture"
                                         value={formData.fixture}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="files" className="block text-sm font-semibold text-gray-700 mb-2">File</label>
+                                    <label htmlFor="files" className="block text-xs font-semibold text-gray-700 mb-1.5">File</label>
                                     <input
                                         type="text"
                                         id="files"
                                         name="files"
                                         value={formData.files}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="legal" className="block text-sm font-semibold text-gray-700 mb-2">Legal Name</label>
+                                    <label htmlFor="legal" className="block text-xs font-semibold text-gray-700 mb-1.5">Legal Name</label>
                                     <input
                                         type="text"
                                         id="legal"
                                         name="legal"
                                         value={formData.legal}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="cont_del_sts" className="block text-sm font-semibold text-gray-700 mb-2">Select Risk Status</label>
-                                    <select
-                                        id="cont_del_sts"
-                                        name="cont_del_sts"
-                                        value={formData.cont_del_sts}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
-                                    >
-                                        {riskStatusOptions.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <label htmlFor="cont_del_sts" className="block text-xs font-semibold text-gray-700 mb-1.5">Select Risk Status</label>
+                                    <FormControl fullWidth size="small">
+                                        <Select
+                                            id="cont_del_sts"
+                                            name="cont_del_sts"
+                                            value={formData.cont_del_sts || '1'}
+                                            onChange={(e) => handleChange({ target: { name: 'cont_del_sts', value: e.target.value } })}
+                                            renderValue={(value) => {
+                                                return renderStatusIcon(value);
+                                            }}
+                                            className="text-sm"
+                                            sx={{
+                                                '& .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#d1d5db',
+                                                },
+                                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#3b82f6',
+                                                },
+                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#3b82f6',
+                                                    borderWidth: '2px',
+                                                },
+                                            }}
+                                        >
+                                            {riskStatusOptions.map((option) => (
+                                                <MenuItem key={option.value} value={option.value}>
+                                                    {renderStatusIcon(option.value)}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
                                 </div>
                             </div>
                         </div>
 
                         {/* Section 2: FUD & Risk Status */}
-                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-6 border border-gray-200">
-                            <div className="flex items-center gap-2 mb-6">
-                                <AssessmentIcon sx={{ fontSize: 20, color: '#3b82f6' }} />
-                                <h2 className="text-lg font-semibold text-gray-800">FUD & Risk Status</h2>
+                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-4 border border-gray-200">
+                            <div className="flex items-center gap-2 mb-3">
+                                <AssessmentIcon sx={{ fontSize: 18, color: '#3b82f6' }} />
+                                <h2 className="text-base font-semibold text-gray-800">FUD & Risk Status</h2>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div>
-                                    <label htmlFor="risk_status" className="block text-sm font-semibold text-gray-700 mb-2">FUD Date</label>
+                                    <label htmlFor="risk_status" className="block text-xs font-semibold text-gray-700 mb-1.5">FUD Date</label>
                                     <input
                                         type="date"
                                         id="risk_status"
                                         name="risk_status"
                                         value={formData.risk_status}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="risk_sts" className="block text-sm font-semibold text-gray-700 mb-2">Select Risk Status</label>
-                                    <select
-                                        id="risk_sts"
-                                        name="risk_sts"
-                                        value={formData.risk_sts}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
-                                    >
-                                        {riskStatusOptions.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <label htmlFor="risk_sts" className="block text-xs font-semibold text-gray-700 mb-1.5">Select Risk Status</label>
+                                    <FormControl fullWidth size="small">
+                                        <Select
+                                            id="risk_sts"
+                                            name="risk_sts"
+                                            value={formData.risk_sts || '1'}
+                                            onChange={(e) => handleChange({ target: { name: 'risk_sts', value: e.target.value } })}
+                                            renderValue={(value) => {
+                                                return renderStatusIcon(value);
+                                            }}
+                                            className="text-sm"
+                                            sx={{
+                                                '& .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#d1d5db',
+                                                },
+                                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#3b82f6',
+                                                },
+                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#3b82f6',
+                                                    borderWidth: '2px',
+                                                },
+                                            }}
+                                        >
+                                            {riskStatusOptions.map((option) => (
+                                                <MenuItem key={option.value} value={option.value}>
+                                                    {renderStatusIcon(option.value)}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
                                 </div>
                             </div>
                         </div>
 
                         {/* Section 3: Component Drawings */}
-                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-6 border border-gray-200">
-                            <div className="flex items-center gap-2 mb-6">
-                                <AssessmentIcon sx={{ fontSize: 20, color: '#3b82f6' }} />
-                                <h2 className="text-lg font-semibold text-gray-800">Component Drawings</h2>
+                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-4 border border-gray-200">
+                            <div className="flex items-center gap-2 mb-3">
+                                <AssessmentIcon sx={{ fontSize: 18, color: '#3b82f6' }} />
+                                <h2 className="text-base font-semibold text-gray-800">Component Drawings</h2>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div>
-                                    <label htmlFor="comp_drawing_rem" className="block text-sm font-semibold text-gray-700 mb-2">Remaining Deliverables</label>
+                                    <label htmlFor="comp_drawing_rem" className="block text-xs font-semibold text-gray-700 mb-1.5">Remaining Deliverables</label>
                                     <input
                                         type="number"
                                         id="comp_drawing_rem"
                                         name="comp_drawing_rem"
                                         value={formData.comp_drawing_rem}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                                        onWheel={handleNumberWheel}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="comp_drawing_total" className="block text-sm font-semibold text-gray-700 mb-2">Total Deliverables</label>
+                                    <label htmlFor="comp_drawing_total" className="block text-xs font-semibold text-gray-700 mb-1.5">Total Deliverables</label>
                                     <input
                                         type="number"
                                         id="comp_drawing_total"
                                         name="comp_drawing_total"
                                         value={formData.comp_drawing_total}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                                        onWheel={handleNumberWheel}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="comp_drawing_sts" className="block text-sm font-semibold text-gray-700 mb-2">Select Risk Status</label>
-                                    <select
-                                        id="comp_drawing_sts"
-                                        name="comp_drawing_sts"
-                                        value={formData.comp_drawing_sts}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
-                                    >
-                                        {riskStatusOptions.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <label htmlFor="comp_drawing_sts" className="block text-xs font-semibold text-gray-700 mb-1.5">Select Risk Status</label>
+                                    <FormControl fullWidth size="small">
+                                        <Select
+                                            id="comp_drawing_sts"
+                                            name="comp_drawing_sts"
+                                            value={formData.comp_drawing_sts || '1'}
+                                            onChange={(e) => handleChange({ target: { name: 'comp_drawing_sts', value: e.target.value } })}
+                                            renderValue={(value) => {
+                                                return renderStatusIcon(value);
+                                            }}
+                                            className="text-sm"
+                                            sx={{
+                                                '& .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#d1d5db',
+                                                },
+                                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#3b82f6',
+                                                },
+                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#3b82f6',
+                                                    borderWidth: '2px',
+                                                },
+                                            }}
+                                        >
+                                            {riskStatusOptions.map((option) => (
+                                                <MenuItem key={option.value} value={option.value}>
+                                                    {renderStatusIcon(option.value)}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
                                 </div>
                             </div>
                         </div>
 
                         {/* Section 4: Parts To Buy (PBOM) */}
-                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-6 border border-gray-200">
-                            <div className="flex items-center gap-2 mb-6">
-                                <AssessmentIcon sx={{ fontSize: 20, color: '#3b82f6' }} />
-                                <h2 className="text-lg font-semibold text-gray-800">Parts To Buy (PBOM)</h2>
+                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-4 border border-gray-200">
+                            <div className="flex items-center gap-2 mb-3">
+                                <AssessmentIcon sx={{ fontSize: 18, color: '#3b82f6' }} />
+                                <h2 className="text-base font-semibold text-gray-800">Parts To Buy (PBOM)</h2>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div>
-                                    <label htmlFor="parts_to_buy_rem" className="block text-sm font-semibold text-gray-700 mb-2">Remaining Deliverables</label>
+                                    <label htmlFor="parts_to_buy_rem" className="block text-xs font-semibold text-gray-700 mb-1.5">Remaining Deliverables</label>
                                     <input
                                         type="number"
                                         id="parts_to_buy_rem"
                                         name="parts_to_buy_rem"
                                         value={formData.parts_to_buy_rem}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                                        onWheel={handleNumberWheel}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="parts_to_buy_total" className="block text-sm font-semibold text-gray-700 mb-2">Total Deliverables</label>
+                                    <label htmlFor="parts_to_buy_total" className="block text-xs font-semibold text-gray-700 mb-1.5">Total Deliverables</label>
                                     <input
                                         type="number"
                                         id="parts_to_buy_total"
                                         name="parts_to_buy_total"
                                         value={formData.parts_to_buy_total}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                                        onWheel={handleNumberWheel}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="parts_to_buy_sts" className="block text-sm font-semibold text-gray-700 mb-2">Select Risk Status</label>
-                                    <select
-                                        id="parts_to_buy_sts"
-                                        name="parts_to_buy_sts"
-                                        value={formData.parts_to_buy_sts}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
-                                    >
-                                        {riskStatusOptions.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <label htmlFor="parts_to_buy_sts" className="block text-xs font-semibold text-gray-700 mb-1.5">Select Risk Status</label>
+                                    <FormControl fullWidth size="small">
+                                        <Select
+                                            id="parts_to_buy_sts"
+                                            name="parts_to_buy_sts"
+                                            value={formData.parts_to_buy_sts || '1'}
+                                            onChange={(e) => handleChange({ target: { name: 'parts_to_buy_sts', value: e.target.value } })}
+                                            renderValue={(value) => {
+                                                return renderStatusIcon(value);
+                                            }}
+                                            className="text-sm"
+                                            sx={{
+                                                '& .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#d1d5db',
+                                                },
+                                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#3b82f6',
+                                                },
+                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#3b82f6',
+                                                    borderWidth: '2px',
+                                                },
+                                            }}
+                                        >
+                                            {riskStatusOptions.map((option) => (
+                                                <MenuItem key={option.value} value={option.value}>
+                                                    {renderStatusIcon(option.value)}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
                                 </div>
                             </div>
                         </div>
 
                         {/* Section 5: Production Readiness */}
-                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-6 border border-gray-200">
-                            <div className="flex items-center gap-2 mb-6">
-                                <AssessmentIcon sx={{ fontSize: 20, color: '#3b82f6' }} />
-                                <h2 className="text-lg font-semibold text-gray-800">Production Readiness</h2>
+                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-4 border border-gray-200">
+                            <div className="flex items-center gap-2 mb-3">
+                                <AssessmentIcon sx={{ fontSize: 18, color: '#3b82f6' }} />
+                                <h2 className="text-base font-semibold text-gray-800">Production Readiness</h2>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div>
-                                    <label htmlFor="pro_readiness_rem" className="block text-sm font-semibold text-gray-700 mb-2">Remaining Deliverables</label>
+                                    <label htmlFor="pro_readiness_rem" className="block text-xs font-semibold text-gray-700 mb-1.5">Remaining Deliverables</label>
                                     <input
                                         type="number"
                                         id="pro_readiness_rem"
                                         name="pro_readiness_rem"
                                         value={formData.pro_readiness_rem}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                                        onWheel={handleNumberWheel}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="pro_readiness_total" className="block text-sm font-semibold text-gray-700 mb-2">Total Deliverables</label>
+                                    <label htmlFor="pro_readiness_total" className="block text-xs font-semibold text-gray-700 mb-1.5">Total Deliverables</label>
                                     <input
                                         type="number"
                                         id="pro_readiness_total"
                                         name="pro_readiness_total"
                                         value={formData.pro_readiness_total}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                                        onWheel={handleNumberWheel}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="pro_readiness_sts" className="block text-sm font-semibold text-gray-700 mb-2">Select Risk Status</label>
-                                    <select
-                                        id="pro_readiness_sts"
-                                        name="pro_readiness_sts"
-                                        value={formData.pro_readiness_sts}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
-                                    >
-                                        {riskStatusOptions.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <label htmlFor="pro_readiness_sts" className="block text-xs font-semibold text-gray-700 mb-1.5">Select Risk Status</label>
+                                    <FormControl fullWidth size="small">
+                                        <Select
+                                            id="pro_readiness_sts"
+                                            name="pro_readiness_sts"
+                                            value={formData.pro_readiness_sts || '1'}
+                                            onChange={(e) => handleChange({ target: { name: 'pro_readiness_sts', value: e.target.value } })}
+                                            renderValue={(value) => {
+                                                return renderStatusIcon(value);
+                                            }}
+                                            className="text-sm"
+                                            sx={{
+                                                '& .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#d1d5db',
+                                                },
+                                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#3b82f6',
+                                                },
+                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#3b82f6',
+                                                    borderWidth: '2px',
+                                                },
+                                            }}
+                                        >
+                                            {riskStatusOptions.map((option) => (
+                                                <MenuItem key={option.value} value={option.value}>
+                                                    {renderStatusIcon(option.value)}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
                                 </div>
                             </div>
                         </div>
 
                         {/* Section 6: Contract Deliverables */}
-                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-6 border border-gray-200">
-                            <div className="flex items-center gap-2 mb-6">
-                                <AssessmentIcon sx={{ fontSize: 20, color: '#3b82f6' }} />
-                                <h2 className="text-lg font-semibold text-gray-800">Contract Deliverables</h2>
+                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-4 border border-gray-200">
+                            <div className="flex items-center gap-2 mb-3">
+                                <AssessmentIcon sx={{ fontSize: 18, color: '#3b82f6' }} />
+                                <h2 className="text-base font-semibold text-gray-800">Contract Deliverables</h2>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div>
-                                    <label htmlFor="cont_deliverable_rem" className="block text-sm font-semibold text-gray-700 mb-2">Remaining Deliverables</label>
+                                    <label htmlFor="cont_deliverable_rem" className="block text-xs font-semibold text-gray-700 mb-1.5">Remaining Deliverables</label>
                                     <input
                                         type="number"
                                         id="cont_deliverable_rem"
                                         name="cont_deliverable_rem"
                                         value={formData.cont_deliverable_rem}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                                        onWheel={handleNumberWheel}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="cont_deliverable_total" className="block text-sm font-semibold text-gray-700 mb-2">Total Deliverables</label>
+                                    <label htmlFor="cont_deliverable_total" className="block text-xs font-semibold text-gray-700 mb-1.5">Total Deliverables</label>
                                     <input
                                         type="number"
                                         id="cont_deliverable_total"
                                         name="cont_deliverable_total"
                                         value={formData.cont_deliverable_total}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                                        onWheel={handleNumberWheel}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="cont_deliverable_sts" className="block text-sm font-semibold text-gray-700 mb-2">Select Risk Status</label>
-                                    <select
-                                        id="cont_deliverable_sts"
-                                        name="cont_deliverable_sts"
-                                        value={formData.cont_deliverable_sts}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
-                                    >
-                                        {riskStatusOptions.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <label htmlFor="cont_deliverable_sts" className="block text-xs font-semibold text-gray-700 mb-1.5">Select Risk Status</label>
+                                    <FormControl fullWidth size="small">
+                                        <Select
+                                            id="cont_deliverable_sts"
+                                            name="cont_deliverable_sts"
+                                            value={formData.cont_deliverable_sts || '1'}
+                                            onChange={(e) => handleChange({ target: { name: 'cont_deliverable_sts', value: e.target.value } })}
+                                            renderValue={(value) => {
+                                                return renderStatusIcon(value);
+                                            }}
+                                            className="text-sm"
+                                            sx={{
+                                                '& .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#d1d5db',
+                                                },
+                                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#3b82f6',
+                                                },
+                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#3b82f6',
+                                                    borderWidth: '2px',
+                                                },
+                                            }}
+                                        >
+                                            {riskStatusOptions.map((option) => (
+                                                <MenuItem key={option.value} value={option.value}>
+                                                    {renderStatusIcon(option.value)}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
                                 </div>
                             </div>
                         </div>
 
                         {/* Section 7: NRC */}
-                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-6 border border-gray-200">
-                            <div className="flex items-center justify-between mb-6">
+                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-4 border border-gray-200">
+                            <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-2">
-                                    <AssessmentIcon sx={{ fontSize: 20, color: '#3b82f6' }} />
-                                    <h2 className="text-lg font-semibold text-gray-800">NRC</h2>
+                                    <AssessmentIcon sx={{ fontSize: 18, color: '#3b82f6' }} />
+                                    <h2 className="text-base font-semibold text-gray-800">NRC</h2>
                                 </div>
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
                                         type="checkbox"
                                         checked={noNRC}
                                         onChange={(e) => handleNoNRCChange(e.target.checked)}
-                                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                                     />
-                                    <span className="text-sm font-medium text-gray-700">No NRC</span>
+                                    <span className="text-xs font-medium text-gray-700">No NRC</span>
                                 </label>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
                                 <div>
-                                    <label htmlFor="amount_rem" className="block text-sm font-semibold text-gray-700 mb-2">Remaining Amount</label>
+                                    <label htmlFor="amount_rem" className="block text-xs font-semibold text-gray-700 mb-1.5">Remaining Amount</label>
                                     <input
                                         type="text"
                                         id="amount_rem"
@@ -1021,11 +1274,11 @@ const AddProject = () => {
                                         value={formData.amount_rem}
                                         onChange={handleChange}
                                         disabled={noNRC}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 text-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="currencyCode1" className="block text-sm font-semibold text-gray-700 mb-2">Select Currency</label>
+                                    <label htmlFor="currencyCode1" className="block text-xs font-semibold text-gray-700 mb-1.5">Select Currency</label>
                                     <select
                                         id="currencyCode1"
                                         name="currencyCode"
@@ -1039,7 +1292,7 @@ const AddProject = () => {
                                             }));
                                         }}
                                         disabled={noNRC}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 text-sm"
                                     >
                                         {currencyOptions.map((option) => (
                                             <option key={option.value} value={option.value}>
@@ -1049,7 +1302,7 @@ const AddProject = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label htmlFor="amount" className="block text-sm font-semibold text-gray-700 mb-2">Total Amount</label>
+                                    <label htmlFor="amount" className="block text-xs font-semibold text-gray-700 mb-1.5">Total Amount</label>
                                     <input
                                         type="text"
                                         id="amount"
@@ -1057,11 +1310,11 @@ const AddProject = () => {
                                         value={formData.amount}
                                         onChange={handleChange}
                                         disabled={noNRC}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 text-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="currencyCode2" className="block text-sm font-semibold text-gray-700 mb-2">Select Currency</label>
+                                    <label htmlFor="currencyCode2" className="block text-xs font-semibold text-gray-700 mb-1.5">Select Currency</label>
                                     <select
                                         id="currencyCode2"
                                         name="currencyCode"
@@ -1075,7 +1328,7 @@ const AddProject = () => {
                                             }));
                                         }}
                                         disabled={noNRC}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 text-sm"
                                     >
                                         {currencyOptions.map((option) => (
                                             <option key={option.value} value={option.value}>
@@ -1085,31 +1338,52 @@ const AddProject = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label htmlFor="amount_sts" className="block text-sm font-semibold text-gray-700 mb-2">Select Risk Status</label>
-                                    <select
-                                        id="amount_sts"
-                                        name="amount_sts"
-                                        value={formData.amount_sts}
-                                        onChange={handleChange}
-                                        disabled={noNRC}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
-                                    >
-                                        {riskStatusOptions.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <label htmlFor="amount_sts" className="block text-xs font-semibold text-gray-700 mb-1.5">Select Risk Status</label>
+                                    <FormControl fullWidth size="small">
+                                        <Select
+                                            id="amount_sts"
+                                            name="amount_sts"
+                                            value={formData.amount_sts || '1'}
+                                            onChange={(e) => handleChange({ target: { name: 'amount_sts', value: e.target.value } })}
+                                            disabled={noNRC}
+                                            renderValue={(value) => {
+                                                return renderStatusIcon(value);
+                                            }}
+                                            className="text-sm"
+                                            sx={{
+                                                '& .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#d1d5db',
+                                                },
+                                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#3b82f6',
+                                                },
+                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                    borderColor: '#3b82f6',
+                                                    borderWidth: '2px',
+                                                },
+                                                '&.Mui-disabled': {
+                                                    backgroundColor: '#f3f4f6',
+                                                    opacity: 0.6,
+                                                },
+                                            }}
+                                        >
+                                            {riskStatusOptions.map((option) => (
+                                                <MenuItem key={option.value} value={option.value}>
+                                                    {renderStatusIcon(option.value)}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
                                 </div>
                             </div>
                         </div>
 
                         {/* SCL and PLAN Files */}
-                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-6 border border-gray-200">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-4 border border-gray-200">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* SCL Files */}
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-3">SCL</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">SCL</label>
                                     <input
                                         type="file"
                                         id="sclFiles"
@@ -1120,7 +1394,7 @@ const AddProject = () => {
                                     />
                                     <label
                                         htmlFor="sclFiles"
-                                        className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-200 group"
+                                        className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-200 group"
                                     >
                                         <div className="flex flex-col items-center gap-2">
                                             <div className="p-2 bg-blue-100 rounded-full group-hover:bg-blue-200 transition-colors">
@@ -1152,7 +1426,7 @@ const AddProject = () => {
 
                                 {/* PLAN Files */}
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-3">PLAN</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">PLAN</label>
                                     <input
                                         type="file"
                                         id="planFiles"
@@ -1163,7 +1437,7 @@ const AddProject = () => {
                                     />
                                     <label
                                         htmlFor="planFiles"
-                                        className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-200 group"
+                                        className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-200 group"
                                     >
                                         <div className="flex flex-col items-center gap-2">
                                             <div className="p-2 bg-blue-100 rounded-full group-hover:bg-blue-200 transition-colors">
@@ -1195,21 +1469,15 @@ const AddProject = () => {
                             </div>
                         </div>
 
-                        {/* Submit Button Section */}
-                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 shadow-lg">
+                        {/* Submit Button */}
+                        <div className="flex justify-end pt-4">
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="w-full bg-white text-blue-600 py-4 px-6 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-semibold text-lg shadow-md hover:shadow-xl transform hover:-translate-y-0.5"
+                                className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2"
                             >
-                                {isSubmitting ? (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                                        Adding Project...
-                                    </span>
-                                ) : (
-                                    'Add Project'
-                                )}
+                                <AddIcon sx={{ fontSize: 20 }} />
+                                {isSubmitting ? 'Adding Project...' : 'Add Project'}
                             </button>
                         </div>
                     </div>
@@ -1373,6 +1641,146 @@ const AddProject = () => {
                     </div>
                 </div>
             )}
+
+            {/* Crop Modal */}
+            <Modal
+                open={showCropModal}
+                onClose={handleCropCancel}
+                aria-labelledby="crop-image-modal"
+                disableEnforceFocus
+                disableAutoFocus
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1300,
+                }}
+            >
+                <Box
+                    sx={{
+                        position: 'relative',
+                        width: '90%',
+                        maxWidth: '800px',
+                        bgcolor: 'background.paper',
+                        borderRadius: '8px',
+                        boxShadow: 24,
+                        p: 3,
+                        outline: 'none',
+                        zIndex: 1301,
+                    }}
+                >
+                    <h2
+                        style={{
+                            marginBottom: '20px',
+                            fontSize: '24px',
+                            fontWeight: '600',
+                        }}
+                    >
+                        Crop Image (2.36:1 Ratio)
+                    </h2>
+                    {imageToCrop && (
+                        <div
+                            style={{
+                                position: 'relative',
+                                width: '100%',
+                                height: '500px',
+                                backgroundColor: '#000',
+                                borderRadius: '8px',
+                                overflow: 'hidden',
+                                zIndex: 2,
+                                touchAction: 'none',
+                                userSelect: 'none',
+                                pointerEvents: 'auto',
+                                isolation: 'isolate',
+                            }}
+                        >
+                            <Cropper
+                                image={imageToCrop}
+                                crop={crop}
+                                zoom={zoom}
+                                aspect={2.36 / 1}
+                                onCropChange={setCrop}
+                                onZoomChange={setZoom}
+                                onCropComplete={(croppedArea, croppedAreaPixels) => {
+                                    setCroppedAreaPixels(croppedAreaPixels);
+                                }}
+                                cropShape="rect"
+                                showGrid={true}
+                            />
+                        </div>
+                    )}
+                    <div
+                        style={{
+                            marginTop: '20px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '15px',
+                        }}
+                    >
+                        <div>
+                            <label
+                                style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                }}
+                            >
+                                Zoom: {Math.round(zoom * 100)}%
+                            </label>
+                            <input
+                                type="range"
+                                min={1}
+                                max={3}
+                                step={0.1}
+                                value={zoom}
+                                onChange={(e) => setZoom(Number(e.target.value))}
+                                style={{ width: '100%' }}
+                            />
+                        </div>
+                        <div
+                            style={{
+                                display: 'flex',
+                                gap: '10px',
+                                justifyContent: 'flex-end',
+                            }}
+                        >
+                            <button
+                                type="button"
+                                onClick={handleCropCancel}
+                                style={{
+                                    backgroundColor: '#6c757d',
+                                    color: '#fff',
+                                    padding: '10px 20px',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onCropComplete}
+                                style={{
+                                    backgroundColor: '#2196F3',
+                                    color: '#fff',
+                                    padding: '10px 20px',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                }}
+                            >
+                                Crop Image
+                            </button>
+                        </div>
+                    </div>
+                </Box>
+            </Modal>
         </div>
     );
 };

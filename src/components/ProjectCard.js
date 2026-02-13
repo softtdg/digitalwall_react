@@ -467,8 +467,8 @@ const ProjectCard = ({ project }) => {
     return (
         <div className="bg-white border-r border-gray-300 h-full flex flex-col overflow-hidden p-1">
             {/* Header with Project ID, Title, and Logo */}
-            <div className="flex-shrink-0 mb-1">
-                <div className="flex items-center justify-between pl-1 bg-gray-100 border border-gray-300">
+            <div className="flex-shrink-0 mb-1 min-h-[40px]">
+                <div className="flex items-center justify-between pl-1 h-full bg-gray-100 border border-gray-300">
                     <div className="pr-2">
                         <h3 className={`${isCompactMode ? 'text-[16px]' : 'text-[18px]'} font-semibold text-gray-800 leading-tight`}>{project.title}</h3>
                     </div>
@@ -497,17 +497,58 @@ const ProjectCard = ({ project }) => {
             </div>
 
             {/* Project Image with Manager Overlay */}
-            {imageUrl && (
-                <div className="w-full mb-1 bg-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0 relative" style={{ height: '23%' }}>
+            <div className="w-full mb-1 bg-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0 relative" style={{ height: '23%' }}>
+                {imageUrl ? (
                     <img src={imageUrl} alt={project.title} className="w-full h-full object-cover" />
-                    {/* Project Manager Overlay */}
+                ) : (
+                    <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                        <span className="text-gray-500 text-sm">No Image</span>
+                    </div>
+                )}
+
+                {project.manufactureLogo && (
+                    <div
+                        style={{
+                            position: "absolute",
+                            top: "-5px",
+                            left: "-5px",
+                            width: "fit-content",
+                            height: "fit-content",
+                            backgroundColor: "#fff",
+                            borderRadius: "3px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                        }}
+                    >
+                        <img
+                            src={
+                                getOciUrl(project.manufactureLogo) ||
+                                project.manufactureLogo
+                            }
+                            alt="logo"
+                            style={{
+                                padding: "5px",
+                                maxWidth: "100px",
+                                maxHeight: "50px",
+                                objectFit: "contain",
+                                width: "auto",
+                                height: "auto",
+                                borderRadius: "0px",
+                            }}
+                        />
+                    </div>
+                )}
+
+                {/* Project Manager Overlay */}
+                {project.manager && (
                     <div className="absolute bottom-2 right-2 bg-[#0009] px-2 py-1 rounded">
                         <p className={`${isCompactMode ? 'text-[11px]' : 'text-[13px]'} text-white font-medium`}>
                             Project Manager : {project.manager || 'N/A'}
                         </p>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
 
             {/* Metrics Section */}
             <div className="flex flex-col flex-1 overflow-y-auto min-h-0 gap-2">

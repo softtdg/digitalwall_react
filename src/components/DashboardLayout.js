@@ -262,8 +262,8 @@ const DashboardLayout = ({ children }) => {
     // Menu items - show all for admin, limited for modifier
     const menuItems = [
         { id: 'dashboard', path: '/dashboard', label: 'Dashboard', icon: DashboardIcon, roles: ['admin', 'modifier'] },
-        { id: 'add-project', path: '/add-project', label: 'Add Project', icon: AddIcon, roles: ['admin', 'modifier'] },
-        { id: 'edit-project', path: '/edit-project', label: 'Edit Project', icon: EditIcon, roles: ['admin', 'modifier'] },
+        // { id: 'add-project', path: '/add-project', label: 'Add Project', icon: AddIcon, roles: ['admin', 'modifier'] },
+        // { id: 'edit-project', path: '/edit-project', label: 'Edit Project', icon: EditIcon, roles: ['admin', 'modifier'] },
         { id: 'delete-project', path: '/delete-project', label: 'Delete Project', icon: DeleteIcon, roles: ['admin'] },
         { id: 'add-user', path: '/add-user', label: 'Add User', icon: PersonAddIcon, roles: ['admin'] },
     ].filter(item => item.roles.includes(userRole));

@@ -70,3 +70,22 @@ export const deleteProject = async (id) => {
   return response;
 };
 
+/**
+ * Get project file (image) by file path
+ * @param {string} filePath - File path
+ * @returns {Promise} API response with blob
+ */
+export const getProjectfile = async (filePath) => {
+  const response = await axiosInstance.post(
+    '/api/projects/file',
+    {
+      filePath: filePath,
+      image: filePath,
+    },
+    {
+      responseType: 'blob',
+    }
+  );
+  return response;
+};
+
