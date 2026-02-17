@@ -928,6 +928,24 @@ const EditProject = () => {
           <h1 className="text-2xl font-bold text-gray-800">Edit Projects</h1>
         </div>
 
+        {/* Loading Overlay */}
+        {isSubmitting && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-2xl p-10 flex flex-col items-center gap-6 min-w-[300px]">
+              <div className="relative">
+                <div className="w-20 h-20 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-12 h-12 border-4 border-transparent border-t-blue-400 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }}></div>
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-semibold text-gray-800 mb-1">Updating Project</p>
+                <p className="text-sm text-gray-600">Please wait while we process your request...</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
           <div className="p-4 md:p-6 space-y-4">
             {/* Project Selector */}

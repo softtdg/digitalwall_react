@@ -262,8 +262,8 @@ const DashboardLayout = ({ children }) => {
     // Menu items - show all for admin, limited for modifier
     const menuItems = [
         { id: 'dashboard', path: '/dashboard', label: 'Dashboard', icon: DashboardIcon, roles: ['admin', 'modifier'] },
-        // { id: 'add-project', path: '/add-project', label: 'Add Project', icon: AddIcon, roles: ['admin', 'modifier'] },
-        // { id: 'edit-project', path: '/edit-project', label: 'Edit Project', icon: EditIcon, roles: ['admin', 'modifier'] },
+        { id: 'add-project', path: '/add-project', label: 'Add Project', icon: AddIcon, roles: ['admin', 'modifier'] },
+        { id: 'edit-project', path: '/edit-project', label: 'Edit Project', icon: EditIcon, roles: ['admin', 'modifier'] },
         { id: 'delete-project', path: '/delete-project', label: 'Delete Project', icon: DeleteIcon, roles: ['admin'] },
         { id: 'add-user', path: '/add-user', label: 'Add User', icon: PersonAddIcon, roles: ['admin'] },
     ].filter(item => item.roles.includes(userRole));
@@ -342,9 +342,13 @@ const DashboardLayout = ({ children }) => {
                                 </svg>
                             </button>
                             {/* Logo - hidden on screens smaller than md */}
-                            <div className="flex-shrink-0 hidden md:block">
+                            <button
+                                onClick={() => navigate('/dashboard')}
+                                className="flex-shrink-0 hidden md:block cursor-pointer hover:opacity-80 transition-opacity"
+                                aria-label="Go to Dashboard"
+                            >
                                 <img src="/favicon.png" alt="Logo" className="h-[35px] w-auto object-contain" />
-                            </div>
+                            </button>
                             {/* Search Field - only show on dashboard route, hide on screens < 1200px */}
                             {location.pathname === '/dashboard' && windowWidth >= 1200 && (
                                 <div className="relative" ref={searchDropdownRef}>
