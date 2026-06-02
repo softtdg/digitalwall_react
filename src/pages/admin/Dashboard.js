@@ -48,6 +48,14 @@ const normalizeProject = (project) => {
     return normalized;
 };
 
+const isProjectVisible = (project) => {
+    const value = project?.isVisible;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    if (typeof value === 'string') return value.toLowerCase() === 'true' || value === '1';
+    return false;
+};
+
 const Dashboard = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [projects, setProjects] = useState([]);
@@ -99,9 +107,11 @@ const Dashboard = () => {
                         }
 
                         // Normalize each project before adding
-                        projectsArray.forEach(project => {
-                            fetchedProjects.push(normalizeProject(project));
-                        });
+                        projectsArray
+                            .filter(isProjectVisible)
+                            .forEach(project => {
+                                fetchedProjects.push(normalizeProject(project));
+                            });
                     }
                 } catch (error) {
                     console.error('Error fetching selected projects:', error);
@@ -129,7 +139,7 @@ const Dashboard = () => {
                             projectData = searchResponse.data;
                         }
 
-                        if (projectData) {
+                        if (projectData && isProjectVisible(projectData)) {
                             // Check if project is already in the list (avoid duplicates)
                             const isDuplicate = fetchedProjects.some(p => p.code === projectData.code || String(p.code) === String(projectData.code));
                             if (!isDuplicate) {
@@ -203,7 +213,9 @@ const Dashboard = () => {
 
             if (response.data) {
                 // Normalize projects from paginated API as well
-                const projects = (response.data.projects || []).map(project => normalizeProject(project));
+                const projects = (response.data.projects || [])
+                    .filter(isProjectVisible)
+                    .map(project => normalizeProject(project));
                 setProjects(projects);
                 const newPagination = {
                     page: response.data.page || pageNum,

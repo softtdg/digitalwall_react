@@ -1,13 +1,13 @@
-import axiosInstance from '../utils/axiosInstance';
+import axiosInstance from "../utils/axiosInstance"
 
 /**
  * Get list of available logos
  * @returns {Promise} API response with logos array
  */
 export const getLogosList = async () => {
-  const response = await axiosInstance.get('/api/logos/list');
-  return response;
-};
+  const response = await axiosInstance.get("/api/logos/list")
+  return response
+}
 
 /**
  * Save a logo reference to the database
@@ -16,16 +16,16 @@ export const getLogosList = async () => {
  */
 export const saveLogoReference = async (logoUrl) => {
   const response = await axiosInstance.post(
-    '/api/logos/',
+    "/api/logos/",
     { logo_url: logoUrl },
     {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-    }
-  );
-  return response;
-};
+    },
+  )
+  return response
+}
 
 /**
  * Delete a logo
@@ -33,7 +33,6 @@ export const saveLogoReference = async (logoUrl) => {
  * @returns {Promise} API response
  */
 export const deleteLogo = async (id) => {
-  const response = await axiosInstance.delete(`/api/logos/${id}`);
-  return response;
-};
-
+  const response = await axiosInstance.delete(`/api/logos/${id}`)
+  return response
+}
