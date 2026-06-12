@@ -111,7 +111,7 @@ const EditProject = () => {
 
   const managerOptions = [
     { label: "GABRIEL P", value: "GABRIEL P" },
-    { label: "Sagar R.", value: "Sagar R." },
+    { label: "Nitya Shah", value: "Nitya Shah" },
     { label: "Camilla", value: "Camilla" },
     { label: "Melissa", value: "Melissa" },
     { label: "WALEED I", value: "WALEED I" },
