@@ -1078,12 +1078,12 @@ const AddProject = () => {
               </div>
             </div>
 
-            {/* Section 2: FUD & Risk Status */}
+            {/* Section 2: FAI & Risk Status */}
             <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-4 border border-gray-200">
               <div className="flex items-center gap-2 mb-3">
                 <AssessmentIcon sx={{ fontSize: 18, color: "#3b82f6" }} />
                 <h2 className="text-base font-semibold text-gray-800">
-                  FUD & Risk Status
+                  FAI & Risk Status
                 </h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1092,7 +1092,7 @@ const AddProject = () => {
                     htmlFor="risk_status"
                     className="block text-xs font-semibold text-gray-700 mb-1.5"
                   >
-                    FUD Date
+                    FAI Date
                   </label>
                   <input
                     type="date"
