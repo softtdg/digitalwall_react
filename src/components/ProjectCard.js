@@ -762,8 +762,31 @@ const ProjectCard = ({ project }) => {
           </div>
         </div>
 
-        {/* Component Drawings - 3rd (odd) */}
+        {/* FUD & Risk Status - 3rd (odd) */}
         <div className="bg-[#f4f5ff] border border-gray-200 rounded p-1 flex-1 flex flex-col justify-center">
+          <div
+            className={`${isCompactMode ? "text-[10px]" : "text-[11px]"} font-semibold text-gray-600 mb-1 leading-tight w-full`}
+          >
+            <span
+              className={`${isCompactMode ? "text-[12px]" : "text-[14px]"} text-black`}
+            >
+              FUD & Risk status
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div
+              className={`${isCompactMode ? "text-[16px]" : "text-[20px]"} font-bold text-[#003a5d]`}
+            >
+              {formatDate(project.fud_risk_status)}
+            </div>
+            <div className="flex-shrink-0">
+              {getStatusDiamond(project.fud_risk_sts)}
+            </div>
+          </div>
+        </div>
+
+        {/* Component Drawings - 4th (even) */}
+        <div className="bg-white border border-gray-200 rounded p-1 flex-1 flex flex-col justify-center">
           <div
             className={`${isCompactMode ? "text-[10px]" : "text-[11px]"} font-semibold text-gray-600 mb-1 leading-tight w-full`}
           >
@@ -786,8 +809,8 @@ const ProjectCard = ({ project }) => {
           </div>
         </div>
 
-        {/* Parts To Buy - 4th (even) */}
-        <div className="bg-white border border-gray-200 rounded p-1 flex-1 flex flex-col justify-center">
+        {/* Parts To Buy - 5th (odd) */}
+        <div className="bg-[#f4f5ff] border border-gray-200 rounded p-1 flex-1 flex flex-col justify-center">
           <div
             className={`${isCompactMode ? "text-[10px]" : "text-[11px]"} font-semibold text-gray-600 mb-1 leading-tight w-full`}
           >
@@ -810,8 +833,8 @@ const ProjectCard = ({ project }) => {
           </div>
         </div>
 
-        {/* Production Readiness - 5th (odd) */}
-        <div className="bg-[#f4f5ff] border border-gray-200 rounded p-1 flex-1 flex flex-col justify-center">
+        {/* Production Readiness - 6th (even) */}
+        <div className="bg-white border border-gray-200 rounded p-1 flex-1 flex flex-col justify-center">
           <div
             className={`${isCompactMode ? "text-[10px]" : "text-[11px]"} font-semibold text-gray-600 mb-1 leading-tight w-full`}
           >
@@ -834,8 +857,8 @@ const ProjectCard = ({ project }) => {
           </div>
         </div>
 
-        {/* Contract Deliverables - 6th (even) */}
-        <div className="bg-white border border-gray-200 rounded p-1 flex-1 flex flex-col justify-center">
+        {/* Contract Deliverables - 7th (odd) */}
+        <div className="bg-[#f4f5ff] border border-gray-200 rounded p-1 flex-1 flex flex-col justify-center">
           <div
             className={`${isCompactMode ? "text-[10px]" : "text-[11px]"} font-semibold text-gray-600 mb-1 leading-tight w-full`}
           >
@@ -858,8 +881,8 @@ const ProjectCard = ({ project }) => {
           </div>
         </div>
 
-        {/* NRC Amount - 7th (odd) */}
-        <div className="bg-[#f4f5ff] border border-gray-200 rounded p-1 flex-1 flex flex-col justify-center">
+        {/* NRC Amount - 8th (even) */}
+        <div className="bg-white border border-gray-200 rounded p-1 flex-1 flex flex-col justify-center">
           <div
             className={`${isCompactMode ? "text-[10px]" : "text-[11px]"} font-semibold text-gray-600 mb-1 leading-tight w-full`}
           >

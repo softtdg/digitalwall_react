@@ -49,6 +49,8 @@ const EditProject = () => {
     legal: "",
     risk_status: "",
     risk_sts: "",
+    fud_risk_status: "",
+    fud_risk_sts: "",
     comp_drawing_total: "",
     comp_drawing_rem: "",
     comp_drawing_sts: "",
@@ -300,6 +302,8 @@ const EditProject = () => {
         legal: "",
         risk_status: "",
         risk_sts: "",
+        fud_risk_status: "",
+        fud_risk_sts: "",
         comp_drawing_total: "",
         comp_drawing_rem: "",
         comp_drawing_sts: "",
@@ -431,6 +435,8 @@ const EditProject = () => {
             legal: projectData.legal ?? "",
             risk_status: formatDateForInput(projectData.risk_status),
             risk_sts: projectData.risk_sts ?? "",
+            fud_risk_status: formatDateForInput(projectData.fud_risk_status),
+            fud_risk_sts: projectData.fud_risk_sts ?? "",
             comp_drawing_rem: projectData.comp_drawing_rem ?? "",
             comp_drawing_total: projectData.comp_drawing_total ?? "",
             parts_to_buy_rem: projectData.parts_to_buy_rem ?? "",
@@ -954,6 +960,8 @@ const EditProject = () => {
         legal: formData.legal || "",
         risk_status: formData.risk_status || "",
         risk_sts: safeDropdownNumber(formData.risk_sts),
+        fud_risk_status: formData.fud_risk_status || "",
+        fud_risk_sts: safeDropdownNumber(formData.fud_risk_sts),
         comp_drawing_rem: safeNumberString(formData.comp_drawing_rem),
         comp_drawing_total: safeNumberString(formData.comp_drawing_total),
         parts_to_buy_rem: safeNumberString(formData.parts_to_buy_rem),
@@ -1519,6 +1527,76 @@ const EditProject = () => {
                       onChange={(e) =>
                         handleChange({
                           target: { name: "risk_sts", value: e.target.value },
+                        })
+                      }
+                      renderValue={(value) => {
+                        return renderStatusIcon(value)
+                      }}
+                      className="text-sm"
+                      sx={{
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          borderColor: "#d1d5db",
+                        },
+                        "&:hover .MuiOutlinedInput-notchedOutline": {
+                          borderColor: "#3b82f6",
+                        },
+                        "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                          borderColor: "#3b82f6",
+                          borderWidth: "2px",
+                        },
+                      }}
+                    >
+                      {riskStatusOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {renderStatusIcon(option.value)}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </div>
+              </div>
+            </div>
+
+            {/* FUD & Risk Status */}
+            <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg p-4 border border-gray-200">
+              <div className="flex items-center gap-2 mb-3">
+                <AssessmentIcon sx={{ fontSize: 18, color: "#3b82f6" }} />
+                <h2 className="text-base font-semibold text-gray-800">
+                  FUD & Risk Status
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label
+                    htmlFor="fud_risk_status"
+                    className="block text-xs font-semibold text-gray-700 mb-1.5"
+                  >
+                    FUD Date
+                  </label>
+                  <input
+                    type="date"
+                    id="fud_risk_status"
+                    name="fud_risk_status"
+                    value={formData.fud_risk_status}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="fud_risk_sts"
+                    className="block text-xs font-semibold text-gray-700 mb-1.5"
+                  >
+                    Select Risk Status
+                  </label>
+                  <FormControl fullWidth size="small">
+                    <Select
+                      id="fud_risk_sts"
+                      name="fud_risk_sts"
+                      value={formData.fud_risk_sts || "1"}
+                      onChange={(e) =>
+                        handleChange({
+                          target: { name: "fud_risk_sts", value: e.target.value },
                         })
                       }
                       renderValue={(value) => {
