@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate, NavLink, useLocation, useSearchParams } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Pagination, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, TextField, Select, MenuItem, FormControl, InputLabel, Box, Divider, IconButton } from '@mui/material';
@@ -11,6 +11,8 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import LogoutIcon from '@mui/icons-material/Logout';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import CloseIcon from '@mui/icons-material/Close';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import LightModeIcon from '@mui/icons-material/LightMode';
 
 const DashboardLayout = ({ children }) => {
     const navigate = useNavigate();
@@ -31,6 +33,23 @@ const DashboardLayout = ({ children }) => {
     const [logoutModalOpen, setLogoutModalOpen] = useState(false);
     const [filterModalOpen, setFilterModalOpen] = useState(false);
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+    const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+
+    // Layout effect avoids a light flash when switching between routes
+    useLayoutEffect(() => {
+        document.documentElement.classList.toggle('dark-mode', darkMode);
+        return () => {
+            document.documentElement.classList.remove('dark-mode');
+        };
+    }, [darkMode]);
+
+    const handleThemeToggle = () => {
+        setDarkMode((prev) => {
+            const next = !prev;
+            localStorage.setItem('theme', next ? 'dark' : 'light');
+            return next;
+        });
+    };
 
     // Read pagination from URL params
     const page = parseInt(searchParams.get('page') || '1', 10);
@@ -524,6 +543,14 @@ const DashboardLayout = ({ children }) => {
                                     />
                                 </ThemeProvider>
                             )}
+                            <button
+                                onClick={handleThemeToggle}
+                                className="flex items-center justify-center p-1.5 border border-white border-opacity-30 rounded-md text-white bg-white bg-opacity-10 hover:bg-opacity-20 transition-colors"
+                                aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                                title={darkMode ? 'Light mode' : 'Dark mode'}
+                            >
+                                {darkMode ? <LightModeIcon sx={{ fontSize: 20 }} /> : <DarkModeIcon sx={{ fontSize: 20 }} />}
+                            </button>
                             <button
                                 onClick={handleLogoutClick}
                                 className="hidden md:flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors text-sm font-medium"

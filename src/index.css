@@ -18,5 +18,149 @@ code {
     monospace;
 }
 
+/* ---------- Dark mode (active only when <html> has .dark-mode) ---------- */
+html.dark-mode {
+  color-scheme: dark;
+}
+
+html.dark-mode body {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+/* Surfaces (header elements using bg-opacity stay untouched) */
+html.dark-mode .bg-white:not([class*="bg-opacity"]) {
+  background-color: #1e293b;
+}
+html.dark-mode .bg-gray-50,
+html.dark-mode .bg-\[\#f4f5ff\] {
+  background-color: #233046;
+}
+html.dark-mode .bg-gray-100 {
+  background-color: #0f172a;
+}
+html.dark-mode .bg-gray-300 {
+  background-color: #334155;
+}
+html.dark-mode [class*="from-gray-50"],
+html.dark-mode [class*="from-blue-50"] {
+  background-image: none;
+  background-color: #1e293b;
+}
+html.dark-mode .min-h-screen[class*="from-gray-50"] {
+  background-color: #0f172a;
+}
+html.dark-mode .bg-blue-50,
+html.dark-mode .bg-blue-50\/50 {
+  background-color: rgba(59, 130, 246, 0.15);
+}
+html.dark-mode .bg-blue-100 {
+  background-color: rgba(59, 130, 246, 0.2);
+}
+
+/* Hover states */
+html.dark-mode .hover\:bg-gray-50:hover,
+html.dark-mode .hover\:bg-gray-100:hover {
+  background-color: #334155;
+}
+html.dark-mode .hover\:bg-blue-50\/30:hover,
+html.dark-mode .hover\:bg-blue-50\/50:hover {
+  background-color: rgba(59, 130, 246, 0.15);
+}
+html.dark-mode .hover\:bg-blue-200:hover {
+  background-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Text */
+html.dark-mode .text-black,
+html.dark-mode .text-gray-900,
+html.dark-mode .text-gray-800 {
+  color: #f1f5f9;
+}
+html.dark-mode .text-gray-700 {
+  color: #e2e8f0;
+}
+html.dark-mode .text-gray-600 {
+  color: #cbd5e1;
+}
+html.dark-mode .text-gray-500 {
+  color: #94a3b8;
+}
+html.dark-mode .text-gray-400 {
+  color: #64748b;
+}
+html.dark-mode .text-\[\#003a5d\] {
+  color: #93c5fd;
+}
+html.dark-mode .text-blue-600 {
+  color: #60a5fa;
+}
+
+/* Borders */
+html.dark-mode .border-gray-200,
+html.dark-mode .border-gray-300 {
+  border-color: #334155;
+}
+
+/* Native form fields (header fields with text-white stay untouched) */
+html.dark-mode input:not(.text-white):not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html.dark-mode select:not(.text-white),
+html.dark-mode textarea {
+  color: #e2e8f0;
+}
+html.dark-mode input:disabled:not(.text-white),
+html.dark-mode .disabled\:bg-gray-100:disabled {
+  background-color: #273449;
+}
+
+/* MUI components */
+html.dark-mode .MuiPaper-root {
+  background-color: #1e293b;
+  color: #e2e8f0;
+}
+html.dark-mode .MuiDialogContentText-root,
+html.dark-mode .MuiInputLabel-root,
+html.dark-mode .MuiFormControlLabel-label {
+  color: #cbd5e1;
+}
+html.dark-mode .MuiOutlinedInput-root {
+  background-color: #1e293b;
+  color: #e2e8f0;
+}
+html.dark-mode .MuiOutlinedInput-notchedOutline {
+  border-color: #475569;
+}
+html.dark-mode .MuiInputBase-input {
+  color: #e2e8f0;
+}
+html.dark-mode .MuiInputBase-root .MuiSvgIcon-root,
+html.dark-mode .MuiAutocomplete-endAdornment .MuiSvgIcon-root,
+html.dark-mode .MuiDialogTitle-root .MuiSvgIcon-root {
+  color: #cbd5e1;
+}
+html.dark-mode .MuiMenuItem-root:hover,
+html.dark-mode .MuiAutocomplete-option:hover,
+html.dark-mode .MuiAutocomplete-option.Mui-focused {
+  background-color: #334155;
+}
+html.dark-mode .MuiDivider-root {
+  border-color: #334155;
+}
+html.dark-mode .MuiDialogContent-root .MuiBox-root {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+html.dark-mode .MuiDialogContent-root label[style] {
+  background-color: transparent !important;
+}
+html.dark-mode .MuiDialogContent-root label[style]:hover {
+  background-color: #334155 !important;
+}
+
+/* Sidebar icons (inactive items) */
+html.dark-mode nav a:not(.bg-blue-600) .MuiSvgIcon-root {
+  color: #cbd5e1 !important;
+}
+
 
 
